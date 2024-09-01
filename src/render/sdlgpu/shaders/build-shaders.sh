@@ -6,12 +6,15 @@ set -e
 
 which fxc &>/dev/null && HAVE_FXC=1 || HAVE_FXC=0
 which dxc &>/dev/null && HAVE_DXC=1 || HAVE_DXC=0
+which xcrun &>/dev/null && HAVE_XCRUN=1 || HAVE_XCRUN=0
 
 [ "$HAVE_FXC" != 0 ] || echo "fxc not in PATH; D3D11 shaders will not be rebuilt"
 [ "$HAVE_DXC" != 0 ] || echo "dxc not in PATH; D3D12 shaders will not be rebuilt"
+[ "$HAVE_XCRUN" != 0 ] || echo "xcrun not in PATH; Metal shaders will not be rebuilt"
 
 USE_FXC=${USE_FXC:-HAVE_FXC}
 USE_DXC=${USE_DXC:-HAVE_DXC}
+USE_XCRUN=${USE_XCRUN:-USE_XCRUN}
 
 spirv_bundle="spir-v.h"
 dxbc50_bundle="dxbc50.h"
@@ -44,7 +47,7 @@ compile-hlsl-dxil() {
     local var_name="$(echo "$output_basename" | sed -e 's/\./_/g')"
 
     dxc "$src" -E main -T $2 -Fh "$output_basename.h" -O3 || exit $?
-    sed -i "s/g_main/$var_name/;s/\r//g" "$output_basename.h"
+    sed -i '' "s/g_main/$var_name/;s/\r//g" "$output_basename.h"
 }
 
 for i in *.vert *.frag; do
@@ -79,7 +82,13 @@ for i in *.vert *.frag; do
         echo "#include \"$dxil60.h\"" >> "$dxil60_bundle"
     fi
 
-    spirv-cross "$spv" --msl --output "$metal"
-    make-header "$metal"
-    echo "#include \"$metal.h\"" >> "$metal_bundle"
+    if [ "$USE_XCRUN" != "0" ]; then
+        spirv-cross "$spv" --msl --output "$metal"
+        xcrun -sdk macosx metal -O3 -c "$metal" -o "$i.air"
+        rm -f "$metal"
+        xcrun -sdk macosx metallib "$i.air" -o "$metal"
+        make-header "$metal"
+        echo "#include \"$metal.h\"" >> "$metal_bundle"
+        rm -f "$i.air" "$metal"
+    fi
 done

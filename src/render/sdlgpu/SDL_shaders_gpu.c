@@ -89,7 +89,7 @@ typedef struct GPU_ShaderSources
     IF_D3D12(.dxil60 = { code, sizeof(code), SDL_GPU_SHADERFORMAT_DXIL }, )
 
 #define SHADER_METAL(code) \
-    IF_METAL(.msl = { code, sizeof(code), SDL_GPU_SHADERFORMAT_MSL }, )
+    IF_METAL(.msl = { code, sizeof(code), SDL_GPU_SHADERFORMAT_METALLIB }, )
 
 // clang-format off
 static const GPU_ShaderSources vert_shader_sources[NUM_VERT_SHADERS] = {
